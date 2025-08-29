@@ -37,11 +37,10 @@ export default function Card({
   href,
   className,
 }: CardProps) {
-  const baseClass =
-    [
-      "group block overflow-hidden rounded-xl bg-light-100 text-dark-900 transition-shadow duration-200 hover:shadow-lg",
-      className ?? "",
-    ].join(" ");
+  const baseClass = [
+    "group block overflow-hidden rounded-xl bg-light-100 text-dark-900 transition-shadow duration-200 hover:shadow-lg",
+    className ?? "",
+  ].join(" ");
 
   const content = (
     <>
@@ -51,23 +50,13 @@ export default function Card({
           alt={imageAlt}
           fill
           sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-          className="object-contain"
+          className="object-cover"
           priority={false}
         />
-        {badge ? (
-          <span
-            className={[
-              "absolute left-4 top-4 inline-flex items-center rounded-full px-3 py-1 text-[var(--text-footnote)] leading-[var(--text-footnote--line-height)] font-[var(--text-footnote--font-weight)]",
-              toneClasses(badge.tone),
-            ].join(" ")}
-          >
-            {badge.text}
-          </span>
-        ) : null}
       </div>
 
       <div className="p-4 sm:p-5">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-[var(--text-heading-3)] leading-[var(--text-heading-3--line-height)] font-[var(--text-heading-3--font-weight)]">
               {title}
