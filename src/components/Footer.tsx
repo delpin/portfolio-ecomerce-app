@@ -8,11 +8,21 @@ type LinkGroup = { title: string; items: LinkItem[] };
 const GROUPS: LinkGroup[] = [
   {
     title: "Featured",
-    items: [{ label: "Air Force 1" }, { label: "Huarache" }, { label: "Air Max 90" }, { label: "Air Max 95" }],
+    items: [
+      { label: "Air Force 1" },
+      { label: "Huarache" },
+      { label: "Air Max 90" },
+      { label: "Air Max 95" },
+    ],
   },
   {
     title: "Shoes",
-    items: [{ label: "All Shoes" }, { label: "Custom Shoes" }, { label: "Jordan Shoes" }, { label: "Running Shoes" }],
+    items: [
+      { label: "All Shoes" },
+      { label: "Custom Shoes" },
+      { label: "Jordan Shoes" },
+      { label: "Running Shoes" },
+    ],
   },
   {
     title: "Clothing",
@@ -40,7 +50,7 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 md:grid-cols-6 gap-10">
           <div className="flex items-start">
-            <Image src="/logo.svg" alt="Brand" width={44} height={44} className="invert" />
+            <Image src="/logo.svg" alt="Brand" width={100} height={48} />
           </div>
 
           <div className="md:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-8">
