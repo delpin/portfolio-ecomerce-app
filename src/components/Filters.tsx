@@ -2,16 +2,46 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { parseQuery, stringifyQuery, toggleInMulti, QueryObject } from "@/lib/utils/query";
+import {
+  parseQuery,
+  stringifyQuery,
+  toggleInMulti,
+  QueryObject,
+} from "@/lib/utils/query";
 
 type Option = { label: string; value: string };
 type Group = { key: string; title: string; options: Option[] };
 
 const GROUPS: Group[] = [
-  { key: "gender", title: "Gender", options: [{ label: "Men", value: "men" }, { label: "Women", value: "women" }, { label: "Unisex", value: "unisex" }] },
-  { key: "size", title: "Size", options: ["XS","S","M","L","XL","XXL","7","8","9","10","11"].map((s)=>({label:String(s), value:String(s).toLowerCase()})) },
-  { key: "color", title: "Color", options: ["black","white","red","green","blue","grey"].map((c)=>({label:c[0].toUpperCase()+c.slice(1), value:c})) },
-  { key: "price", title: "Price Range", options: [
+  {
+    key: "gender",
+    title: "Gender",
+    options: [
+      { label: "Men", value: "men" },
+      { label: "Women", value: "women" },
+      { label: "Kids", value: "kids" },
+    ],
+  },
+  {
+    key: "size",
+    title: "Size",
+    options: ["7", "8", "9", "10", "11"].map((s) => ({
+      label: String(s),
+      value: String(s).toLowerCase(),
+    })),
+  },
+  {
+    key: "color",
+    title: "Color",
+    options: ["black", "white", "red", "green", "blue", "grey"].map((c) => ({
+      label: c[0].toUpperCase() + c.slice(1),
+      value: c,
+    })),
+  },
+  {
+    key: "price",
+    title: "Price Range",
+    options: [
       { label: "$0 - $50", value: "0-50" },
       { label: "$50 - $100", value: "50-100" },
       { label: "$100 - $150", value: "100-150" },
@@ -20,7 +50,10 @@ const GROUPS: Group[] = [
   },
 ];
 
-function useQueryState(): [QueryObject, (updater: (q: QueryObject) => QueryObject) => void] {
+function useQueryState(): [
+  QueryObject,
+  (updater: (q: QueryObject) => QueryObject) => void
+] {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -49,12 +82,46 @@ export default function Filters() {
   }, []);
 
   const isChecked = (key: string, value: string) => {
+    // Exclusive logic for price: we store `price` as "min-max" string or derived from priceMin/priceMax
+    if (key === "price") {
+      const raw = (query.price as string | undefined) ?? undefined;
+      const fromMinMax =
+        typeof query.priceMin === "number" || typeof query.priceMax === "number"
+          ? `${query.priceMin ?? 0}-${query.priceMax ?? 9999}`
+          : undefined;
+      const current = raw ?? fromMinMax;
+      return current === value;
+    }
     const v = query[key];
     if (Array.isArray(v)) return v.map(String).includes(String(value));
     return v != null && String(v) === String(value);
-    };
+  };
 
   const onToggle = (key: string, value: string) => {
+    if (key === "price") {
+      // Price is exclusive: clicking the same value unsets, clicking another value sets that one
+      setQuery((q) => {
+        const checked = isChecked("price", value);
+        if (checked) {
+          const next = { ...q };
+          delete next.price;
+          delete next.priceMin;
+          delete next.priceMax;
+          return next;
+        }
+        const [minStr, maxStr] = value.split("-");
+        const priceMin = Number(minStr);
+        const priceMax = Number(maxStr);
+        return {
+          ...q,
+          price: value,
+          priceMin: Number.isNaN(priceMin) ? undefined : priceMin,
+          priceMax: Number.isNaN(priceMax) ? undefined : priceMax,
+          page: 1,
+        };
+      });
+      return;
+    }
     setQuery((q) => toggleInMulti(q, key, value));
   };
 
@@ -89,7 +156,10 @@ export default function Filters() {
 
       {open && (
         <div className="md:hidden fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setOpen(false)}
+          />
           <div
             id="filter-drawer"
             className="absolute inset-y-0 left-0 w-80 bg-light-100 p-4 overflow-y-auto"
@@ -140,7 +210,13 @@ function Panel({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <span className="text-dark-900">Filters</span>
-        <button type="button" onClick={onClear} className="text-dark-700 underline">Clear</button>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-dark-700 underline"
+        >
+          Clear
+        </button>
       </div>
       {groups.map((g) => (
         <div key={g.key} className="border-t border-light-300 pt-4">
@@ -148,7 +224,9 @@ function Panel({
             type="button"
             className="w-full flex items-center justify-between"
             aria-expanded={!!expanded[g.key]}
-            onClick={() => setExpanded((prev) => ({ ...prev, [g.key]: !prev[g.key] }))}
+            onClick={() =>
+              setExpanded((prev) => ({ ...prev, [g.key]: !prev[g.key] }))
+            }
           >
             <span className="text-dark-900">{g.title}</span>
             <span className="text-dark-700">{expanded[g.key] ? "−" : "+"}</span>
@@ -164,7 +242,10 @@ function Panel({
                     checked={isChecked(g.key, o.value)}
                     onChange={() => onToggle(g.key, o.value)}
                   />
-                  <label htmlFor={`${g.key}-${o.value}`} className="text-dark-900">
+                  <label
+                    htmlFor={`${g.key}-${o.value}`}
+                    className="text-dark-900"
+                  >
                     {o.label}
                   </label>
                 </li>
