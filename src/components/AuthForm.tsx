@@ -3,26 +3,34 @@
 import { useState } from "react";
 import Link from "next/link";
 import SocialProviders from "./SocialProviders";
+import { useRouter } from "next/navigation";
 
 type Mode = "sign-in" | "sign-up";
 
 type Props = {
   mode: Mode;
-  onSubmit?: (data: { name?: string; email: string; password: string }) => void;
+  onSubmit?: (data: FormData) => Promise<{ok: boolean, userId: string | undefined} | void>;
 };
 
 export default function AuthForm({ mode, onSubmit }: Props) {
   const [show, setShow] = useState(false);
+  const router = useRouter();
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const payload = {
-      name: fd.get("name")?.toString(),
-      email: (fd.get("email") as string) ?? "",
-      password: (fd.get("password") as string) ?? "",
-    };
-    onSubmit?.(payload);
+
+    try {
+      
+      const result = await onSubmit?.(fd);
+      if (result?.ok) {
+        router.push("/");
+      }
+
+    } catch (error) {
+      console.error(error);
+    }
+    
   }
 
   const title = mode === "sign-in" ? "Welcome back!" : "Join us today!";
@@ -70,14 +78,14 @@ export default function AuthForm({ mode, onSubmit }: Props) {
               htmlFor="name"
               className="block text-dark-900 leading-[var(--text-caption--line-height)]"
             >
-              Full Name
+              Name
             </label>
             <input
               id="name"
               name="name"
               type="text"
               autoComplete="name"
-              placeholder="Enter your full name"
+              placeholder="Enter your name"
               className="w-full rounded-xl border border-light-300 bg-light-100 px-4 py-3 outline-none placeholder:text-dark-500 focus:ring-2 focus:ring-dark-900"
             />
           </div>
