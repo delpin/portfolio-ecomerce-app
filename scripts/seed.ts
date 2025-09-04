@@ -1,73 +1,215 @@
-import { db } from '../src/lib/db';
-import { products } from '../src/lib/db/schema';
+import { db } from "../src/lib/db";
+import {
+  brands,
+  genders,
+  colors,
+  sizes,
+  categories,
+  collections,
+  products,
+  productVariants,
+  productImages,
+  productCollections,
+} from "../src/lib/db/schema";
+import { eq, inArray } from "drizzle-orm";
+import { promises as fs } from "fs";
+import path from "path";
+import { randomUUID } from "crypto";
 
-const nikeProducts = [
-  {
-    name: 'Nike Air Max 270',
-    description: 'The Nike Air Max 270 delivers visible cushioning under every step.',
-    price: '150.00',
-    imageUrl: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/99486859-0ff3-46b4-949b-2d16af2ad421/air-max-270-mens-shoes-KkLcGR.png',
-    category: 'Shoes',
-    brand: 'Nike',
-    stock: 50,
-  },
-  {
-    name: 'Nike Air Force 1',
-    description: 'The radiance lives on in the Nike Air Force 1, the basketball original.',
-    price: '110.00',
-    imageUrl: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/b7d9211c-26e7-431a-ac24-b0540fb3c00f/air-force-1-07-mens-shoes-jBrhbr.png',
-    category: 'Shoes',
-    brand: 'Nike',
-    stock: 75,
-  },
-  {
-    name: 'Nike Dri-FIT T-Shirt',
-    description: 'Nike Dri-FIT technology moves sweat away from your skin.',
-    price: '25.00',
-    imageUrl: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/16a4b0a9-3c7e-4de6-9b4e-4d7b7b7b7b7b/dri-fit-mens-fitness-t-shirt-HPdvKq.png',
-    category: 'Apparel',
-    brand: 'Nike',
-    stock: 100,
-  },
-  {
-    name: 'Nike React Infinity Run',
-    description: 'Nike React Infinity Run Flyknit is designed to help reduce injury.',
-    price: '160.00',
-    imageUrl: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/8439f823-86cf-4086-81d2-4f9ff9a66866/react-infinity-run-flyknit-mens-running-shoe-zX42Nc.png',
-    category: 'Shoes',
-    brand: 'Nike',
-    stock: 30,
-  },
-  {
-    name: 'Nike Sportswear Hoodie',
-    description: 'The Nike Sportswear Club Fleece Hoodie is made with soft fleece.',
-    price: '55.00',
-    imageUrl: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/3396ee3c-08cc-4ada-baa9-655f12e32c71/sportswear-club-fleece-mens-hoodie-LcSw5q.png',
-    category: 'Apparel',
-    brand: 'Nike',
-    stock: 60,
-  },
-  {
-    name: 'Nike Air Jordan 1',
-    description: 'The Air Jordan 1 Retro High OG stays true to its roots.',
-    price: '170.00',
-    imageUrl: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/85f9c5e8-6d8e-4b5e-9c1e-4b5e9c1e4b5e/air-jordan-1-retro-high-og-mens-shoes-Lg5sZg.png',
-    category: 'Shoes',
-    brand: 'Nike',
-    stock: 25,
-  },
+const uploadBase = path.join(process.cwd(), "static", "uploads", "shoes");
+const publicShoes = path.join(process.cwd(), "public", "shoes");
+
+const nikeBrand = { name: "Nike", slug: "nike", logoUrl: null as string | null };
+
+const baseGenders = [
+  { label: "Men", slug: "men" },
+  { label: "Women", slug: "women" },
+  { label: "Kids", slug: "kids" },
 ];
+
+const baseColors = [
+  { name: "Black", slug: "black", hexCode: "#000000" },
+  { name: "White", slug: "white", hexCode: "#FFFFFF" },
+  { name: "Red", slug: "red", hexCode: "#FF0000" },
+  { name: "Blue", slug: "blue", hexCode: "#0000FF" },
+  { name: "Green", slug: "green", hexCode: "#00FF00" },
+];
+
+const baseSizes = [
+  { name: "S", slug: "s", sortOrder: 1 },
+  { name: "M", slug: "m", sortOrder: 2 },
+  { name: "L", slug: "l", sortOrder: 3 },
+  { name: "XL", slug: "xl", sortOrder: 4 },
+  { name: "XXL", slug: "xxl", sortOrder: 5 },
+];
+
+const baseCategories = [
+  { name: "Shoes", slug: "shoes" },
+  { name: "Apparel", slug: "apparel" },
+  { name: "Accessories", slug: "accessories" },
+];
+
+const baseCollections = [
+  { name: "Summer '25", slug: "summer-25" },
+  { name: "Essentials", slug: "essentials" },
+];
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+async function ensureUploads() {
+  await fs.mkdir(uploadBase, { recursive: true });
+  const files = await fs.readdir(publicShoes);
+  const copied: string[] = [];
+  for (const f of files) {
+    const src = path.join(publicShoes, f);
+    const dest = path.join(uploadBase, f);
+    try {
+      await fs.copyFile(src, dest);
+      copied.push(dest);
+    } catch {}
+  }
+  return copied;
+}
 
 async function seed() {
   try {
-    console.log('Seeding database...');
-    
-    // Insert Nike products
-    await db.insert(products).values(nikeProducts);
-    
-    console.log('Database seeded successfully!');
+    console.log("Seeding database...");
+
+    await ensureUploads();
+
+    const [brand] = await db
+      .insert(brands)
+      .values(nikeBrand)
+      .onConflictDoNothing()
+      .returning({ id: brands.id });
+
+    const genderRows = await db
+      .insert(genders)
+      .values(baseGenders)
+      .onConflictDoNothing()
+      .returning({ id: genders.id, slug: genders.slug });
+    const colorRows = await db
+      .insert(colors)
+      .values(baseColors)
+      .onConflictDoNothing()
+      .returning({ id: colors.id, slug: colors.slug });
+    const sizeRows = await db
+      .insert(sizes)
+      .values(baseSizes)
+      .onConflictDoNothing()
+      .returning({ id: sizes.id, slug: sizes.slug, sortOrder: sizes.sortOrder });
+    const categoryRows = await db
+      .insert(categories)
+      .values(baseCategories)
+      .onConflictDoNothing()
+      .returning({ id: categories.id, slug: categories.slug });
+    const collectionRows = await db
+      .insert(collections)
+      .values(baseCollections)
+      .onConflictDoNothing()
+      .returning({ id: collections.id, slug: collections.slug });
+
+    const brandId =
+      brand?.id ??
+      (await db.select().from(brands).where(eq(brands.slug, "nike"))).at(0)?.id;
+
+    if (!brandId) {
+      throw new Error("Failed to resolve Nike brand id");
+    }
+
+    const uploaded = await fs.readdir(uploadBase);
+
+    const createdProductIds: string[] = [];
+
+    for (let i = 0; i < 15; i++) {
+      const g = pickRandom(genderRows.length ? genderRows : await db.select().from(genders));
+      const c = pickRandom(categoryRows.length ? categoryRows : await db.select().from(categories));
+
+      const name = `Nike ${["Air", "React", "Zoom", "Pegasus", "Invincible", "Structure"][i % 6]} ${100 + i}`;
+      const description = `High-performance Nike ${c.slug} engineered for comfort and durability. Variant ${i + 1}.`;
+
+      const [p] = await db
+        .insert(products)
+        .values({
+          name,
+          description,
+          categoryId: c.id,
+          genderId: g.id,
+          brandId,
+          isPublished: true,
+        })
+        .returning({ id: products.id });
+
+      createdProductIds.push(p.id);
+
+      const chosenColors = Array.from(new Set(Array.from({ length: 2 + (i % 2) }, () => pickRandom(colorRows)))).slice(0, 3);
+      const chosenSizes = sizeRows;
+
+      const variantIds: string[] = [];
+      for (const color of chosenColors) {
+        for (const size of chosenSizes) {
+          const sku = `NIKE-${i + 1}-${color.slug}-${size.slug}-${randomUUID().slice(0, 6).toUpperCase()}`;
+          const basePrice = 90 + (i % 8) * 10;
+          const price = basePrice.toFixed(2);
+          const salePrice = i % 3 === 0 ? (basePrice - 10).toFixed(2) : null;
+
+          const [v] = await db
+            .insert(productVariants)
+            .values({
+              productId: p.id,
+              sku,
+              price,
+              salePrice: salePrice ?? undefined,
+              colorId: color.id,
+              sizeId: size.id,
+              inStock: 5 + (i % 10),
+              weight: 0.85,
+              dimensions: { length: 30, width: 20, height: 12 },
+            })
+            .returning({ id: productVariants.id });
+
+          variantIds.push(v.id);
+
+          const picks = Array.from(
+            new Set(
+              Array.from({ length: 1 + (i % 2) }, () => pickRandom(uploaded))
+            )
+          );
+
+          let sort = 0;
+          for (const fname of picks) {
+            await db.insert(productImages).values({
+              productId: p.id,
+              variantId: v.id,
+              url: `/static/uploads/shoes/${fname}`,
+              sortOrder: sort++,
+              isPrimary: sort === 1,
+            });
+          }
+        }
+      }
+
+      if (variantIds.length) {
+        await db
+          .update(products)
+          .set({ defaultVariantId: variantIds[0] })
+          .where(eq(products.id, p.id));
+      }
+
+      const chosenCollections = collectionRows.slice(0, 1 + (i % 2));
+      for (const col of chosenCollections) {
+        await db
+          .insert(productCollections)
+          .values({ productId: p.id, collectionId: col.id })
+          .onConflictDoNothing();
+      }
+    }
+
+    console.log(`Seed complete. Products: ${createdProductIds.length}`);
   } catch (error) {
-    console.error('Error seeding database:', error);
+    console.error("Error seeding database:", error);
     process.exit(1);
   }
 }
