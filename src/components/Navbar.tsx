@@ -7,9 +7,9 @@ import Link from "next/link";
 type NavItem = { label: string; href?: string };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Men", href: "#" },
-  { label: "Women", href: "#" },
-  { label: "Kids", href: "#" },
+  { label: "Men", href: "/products?gender=men" },
+  { label: "Women", href: "/products?gender=women" },
+  { label: "Kids", href: "/products?gender=unisex" },
   { label: "Collections", href: "#" },
   { label: "Contact", href: "#" },
 ];
