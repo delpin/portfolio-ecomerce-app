@@ -58,31 +58,26 @@ export default function Card({
       <div className="p-4 sm:p-5">
         <div className="flex flex-col">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-[var(--text-heading-3)] leading-[var(--text-heading-3--line-height)] font-[var(--text-heading-3--font-weight)]">
+            <h3 className="text-[var(--text-heading-3)] leading-[var(--text-heading-3--line-height)] font-[var(--text-heading-3--font-weight)] truncate">
               {title}
             </h3>
             {price !== undefined ? (
-              <span className="hidden sm:block text-[var(--text-body)] leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)] text-dark-900">
+              <span className="hidden sm:block leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)] text-dark-900">
                 {`$${price.toFixed(2)}`}
               </span>
             ) : null}
           </div>
 
           {subtitle ? (
-            <p className="text-dark-700 text-[var(--text-body)] leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)]">
+            <p className="text-dark-700  leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)]">
               {subtitle}
             </p>
           ) : null}
 
           {colorsCount ? (
-            <p className="text-dark-700 text-[var(--text-body)] leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)]">
+            <p className="text-dark-700 leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)]">
               {colorsCount} Colour
             </p>
-          ) : null}
-          {price !== undefined ? (
-            <span className="sm:hidden mt-1 text-[var(--text-body)] leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)] text-dark-900">
-              {`$${price.toFixed(2)}`}
-            </span>
           ) : null}
         </div>
       </div>

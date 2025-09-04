@@ -11,15 +11,18 @@ import {
   productImages,
   productCollections,
 } from "../src/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 
-const uploadBase = path.join(process.cwd(), "static", "uploads", "shoes");
 const publicShoes = path.join(process.cwd(), "public", "shoes");
 
-const nikeBrand = { name: "Nike", slug: "nike", logoUrl: null as string | null };
+const nikeBrand = {
+  name: "Nike",
+  slug: "nike",
+  logoUrl: null as string | null,
+};
 
 const baseGenders = [
   { label: "Men", slug: "men" },
@@ -59,18 +62,15 @@ function pickRandom<T>(arr: T[]): T {
 }
 
 async function ensureUploads() {
-  await fs.mkdir(uploadBase, { recursive: true });
-  const files = await fs.readdir(publicShoes);
-  const copied: string[] = [];
-  for (const f of files) {
-    const src = path.join(publicShoes, f);
-    const dest = path.join(uploadBase, f);
-    try {
-      await fs.copyFile(src, dest);
-      copied.push(dest);
-    } catch {}
+  // Исторически копировали в static/uploads; сейчас достаточно
+  // использовать файлы прямо из public/shoes, которые доступны по URL /shoes/*.
+  // Функцию оставляем для совместимости и потенциального логирования.
+  try {
+    await fs.access(publicShoes);
+  } catch {
+    throw new Error(`Images source directory not found: ${publicShoes}`);
   }
-  return copied;
+  return [] as string[];
 }
 
 async function seed() {
@@ -85,31 +85,64 @@ async function seed() {
       .onConflictDoNothing()
       .returning({ id: brands.id });
 
-    const genderRows = await db
+    let genderRows = await db
       .insert(genders)
       .values(baseGenders)
       .onConflictDoNothing()
       .returning({ id: genders.id, slug: genders.slug });
-    const colorRows = await db
+    if (!genderRows.length) {
+      genderRows = await db
+        .select({ id: genders.id, slug: genders.slug })
+        .from(genders);
+    }
+
+    let colorRows = await db
       .insert(colors)
       .values(baseColors)
       .onConflictDoNothing()
       .returning({ id: colors.id, slug: colors.slug });
-    const sizeRows = await db
+    if (!colorRows.length) {
+      colorRows = await db
+        .select({ id: colors.id, slug: colors.slug })
+        .from(colors);
+    }
+
+    let sizeRows = await db
       .insert(sizes)
       .values(baseSizes)
       .onConflictDoNothing()
-      .returning({ id: sizes.id, slug: sizes.slug, sortOrder: sizes.sortOrder });
-    const categoryRows = await db
+      .returning({
+        id: sizes.id,
+        slug: sizes.slug,
+        sortOrder: sizes.sortOrder,
+      });
+    if (!sizeRows.length) {
+      sizeRows = await db
+        .select({ id: sizes.id, slug: sizes.slug, sortOrder: sizes.sortOrder })
+        .from(sizes);
+    }
+
+    let categoryRows = await db
       .insert(categories)
       .values(baseCategories)
       .onConflictDoNothing()
       .returning({ id: categories.id, slug: categories.slug });
-    const collectionRows = await db
+    if (!categoryRows.length) {
+      categoryRows = await db
+        .select({ id: categories.id, slug: categories.slug })
+        .from(categories);
+    }
+
+    let collectionRows = await db
       .insert(collections)
       .values(baseCollections)
       .onConflictDoNothing()
       .returning({ id: collections.id, slug: collections.slug });
+    if (!collectionRows.length) {
+      collectionRows = await db
+        .select({ id: collections.id, slug: collections.slug })
+        .from(collections);
+    }
 
     const brandId =
       brand?.id ??
@@ -119,16 +152,33 @@ async function seed() {
       throw new Error("Failed to resolve Nike brand id");
     }
 
-    const uploaded = await fs.readdir(uploadBase);
+    // Берём доступные публичные изображения из public/shoes
+    const allFiles = await fs.readdir(publicShoes);
+    const uploaded = allFiles.filter(
+      (f) => !f.startsWith(".") && /\.(png|jpe?g|webp|avif)$/i.test(f)
+    );
+    if (!uploaded.length) {
+      throw new Error(
+        `No images found in ${publicShoes}. Ensure shoe images exist.`
+      );
+    }
 
     const createdProductIds: string[] = [];
 
     for (let i = 0; i < 15; i++) {
-      const g = pickRandom(genderRows.length ? genderRows : await db.select().from(genders));
-      const c = pickRandom(categoryRows.length ? categoryRows : await db.select().from(categories));
+      const g = pickRandom(
+        genderRows.length ? genderRows : await db.select().from(genders)
+      );
+      const c = pickRandom(
+        categoryRows.length ? categoryRows : await db.select().from(categories)
+      );
 
-      const name = `Nike ${["Air", "React", "Zoom", "Pegasus", "Invincible", "Structure"][i % 6]} ${100 + i}`;
-      const description = `High-performance Nike ${c.slug} engineered for comfort and durability. Variant ${i + 1}.`;
+      const name = `Nike ${
+        ["Air", "React", "Zoom", "Pegasus", "Invincible", "Structure"][i % 6]
+      } ${100 + i}`;
+      const description = `High-performance Nike ${
+        c.slug
+      } engineered for comfort and durability. Variant ${i + 1}.`;
 
       const [p] = await db
         .insert(products)
@@ -144,13 +194,22 @@ async function seed() {
 
       createdProductIds.push(p.id);
 
-      const chosenColors = Array.from(new Set(Array.from({ length: 2 + (i % 2) }, () => pickRandom(colorRows)))).slice(0, 3);
+      const chosenColorsRaw = Array.from(
+        new Set(
+          Array.from({ length: 2 + (i % 2) }, () => pickRandom(colorRows))
+        )
+      ).slice(0, 3);
+      const chosenColors = chosenColorsRaw.length
+        ? chosenColorsRaw
+        : [colorRows[0]];
       const chosenSizes = sizeRows;
 
       const variantIds: string[] = [];
       for (const color of chosenColors) {
         for (const size of chosenSizes) {
-          const sku = `NIKE-${i + 1}-${color.slug}-${size.slug}-${randomUUID().slice(0, 6).toUpperCase()}`;
+          const sku = `NIKE-${i + 1}-${color.slug}-${size.slug}-${randomUUID()
+            .slice(0, 6)
+            .toUpperCase()}`;
           const basePrice = 90 + (i % 8) * 10;
           const price = basePrice.toFixed(2);
           const salePrice = i % 3 === 0 ? (basePrice - 10).toFixed(2) : null;
@@ -172,18 +231,20 @@ async function seed() {
 
           variantIds.push(v.id);
 
-          const picks = Array.from(
+          const picksRaw = Array.from(
             new Set(
               Array.from({ length: 1 + (i % 2) }, () => pickRandom(uploaded))
             )
           );
+          const picks = picksRaw.length ? picksRaw : [uploaded[0]];
 
           let sort = 0;
           for (const fname of picks) {
             await db.insert(productImages).values({
               productId: p.id,
               variantId: v.id,
-              url: `/static/uploads/shoes/${fname}`,
+              // Храним URL, раздаваемый из public: /shoes/<file>
+              url: `/shoes/${fname}`,
               sortOrder: sort++,
               isPrimary: sort === 1,
             });

@@ -19,7 +19,7 @@ const GROUPS: Group[] = [
     options: [
       { label: "Men", value: "men" },
       { label: "Women", value: "women" },
-      { label: "Unisex", value: "unisex" },
+      { label: "Kids", value: "kids" },
     ],
   },
   {
