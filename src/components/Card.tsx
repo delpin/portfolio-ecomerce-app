@@ -7,7 +7,7 @@ export type BadgeTone = "orange" | "green" | "red";
 export interface CardProps {
   title: string;
   subtitle?: string;
-  price?: string | number;
+  price?: number;
   imageSrc: string;
   imageAlt?: string;
   badge?: { text: string; tone?: BadgeTone };
@@ -63,7 +63,7 @@ export default function Card({
             </h3>
             {price !== undefined ? (
               <span className="hidden sm:block text-[var(--text-body)] leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)] text-dark-900">
-                {typeof price === "number" ? `$${price.toFixed(2)}` : price}
+                {`$${price.toFixed(2)}`}
               </span>
             ) : null}
           </div>
@@ -79,10 +79,9 @@ export default function Card({
               {colorsCount} Colour
             </p>
           ) : null}
-
           {price !== undefined ? (
             <span className="sm:hidden mt-1 text-[var(--text-body)] leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)] text-dark-900">
-              {typeof price === "number" ? `$${price.toFixed(2)}` : price}
+              {`$${price.toFixed(2)}`}
             </span>
           ) : null}
         </div>
