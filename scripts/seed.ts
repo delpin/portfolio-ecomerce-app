@@ -36,11 +36,11 @@ const baseColors = [
 ];
 
 const baseSizes = [
-  { name: "S", slug: "s", sortOrder: 1 },
-  { name: "M", slug: "m", sortOrder: 2 },
-  { name: "L", slug: "l", sortOrder: 3 },
-  { name: "XL", slug: "xl", sortOrder: 4 },
-  { name: "XXL", slug: "xxl", sortOrder: 5 },
+  { name: "7", slug: "7", sortOrder: 1 },
+  { name: "8", slug: "8", sortOrder: 2 },
+  { name: "9", slug: "9", sortOrder: 3 },
+  { name: "10", slug: "10", sortOrder: 4 },
+  { name: "11", slug: "11", sortOrder: 5 },
 ];
 
 const baseCategories = [
