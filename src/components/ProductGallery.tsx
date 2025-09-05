@@ -2,7 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { Check, ImageOff } from "lucide-react";
+import { Check, ImageOff, ChevronLeft, ChevronRight } from "lucide-react";
 
 type VariantImages = Record<string, string[]>;
 
@@ -96,7 +96,7 @@ export default function ProductGallery({
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[80px_1fr] lg:gap-4">
         {/* Thumbs (desktop left) */}
         <div className="hidden lg:block">
-          <div className="flex lg:flex-col gap-2 overflow-auto max-h-[520px] pr-1">
+          <div className="flex lg:flex-col gap-2 overflow-y-auto overflow-x-hidden max-h-[520px] pr-1">
             {allImages.length ? (
               allImages.map((src, idx) => {
                 const isActive = idx === selectedIndex;
@@ -151,6 +151,32 @@ export default function ProductGallery({
                 onLoadingComplete={() => setLoaded(true)}
                 priority
               />
+              {allImages.length > 1 ? (
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Previous image"
+                    onClick={() =>
+                      setSelectedIndex(
+                        (i) => (i - 1 + allImages.length) % allImages.length
+                      )
+                    }
+                    className="grid h-9 w-9 place-items-center rounded-full border border-light-300 bg-light-100/90 text-dark-900 shadow-sm backdrop-blur focus:outline-none focus:ring-2 focus:ring-dark-900"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Next image"
+                    onClick={() =>
+                      setSelectedIndex((i) => (i + 1) % allImages.length)
+                    }
+                    className="grid h-9 w-9 place-items-center rounded-full border border-light-300 bg-light-100/90 text-dark-900 shadow-sm backdrop-blur focus:outline-none focus:ring-2 focus:ring-dark-900"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="absolute inset-0 grid place-items-center text-dark-600">
