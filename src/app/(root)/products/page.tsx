@@ -71,6 +71,7 @@ export default async function ProductsPage({
                       ? Number(p.price)
                       : undefined
                   }
+                  href={`/products/${p.id}`}
                 />
               ))}
             </div>
