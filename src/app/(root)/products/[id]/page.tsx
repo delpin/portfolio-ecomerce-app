@@ -1,12 +1,8 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
-import {
-  ProductGallery,
-  SizePicker,
-  CollapsibleSection,
-  Card,
-} from "@/components";
+import { ProductGallery, CollapsibleSection, Card } from "@/components";
+import AddToBag from "@/components/AddToBag";
 import {
   getProduct,
   getProductReviews,
@@ -195,7 +191,7 @@ export default async function ProductDetailsPage({ params }: PageProps) {
           {sizes.length ? (
             <div className="mt-2 mb-4">
               <h2 className="text-heading-5 text-dark-900 mb-2">Select Size</h2>
-              <SizePicker sizes={sizes} />
+              <AddToBag product={product} sizes={sizes} />
             </div>
           ) : null}
 

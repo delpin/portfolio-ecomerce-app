@@ -2,7 +2,13 @@
 
 import React from "react";
 
-export default function SizePicker({ sizes }: { sizes: string[] }) {
+export default function SizePicker({
+  sizes,
+  onChange,
+}: {
+  sizes: string[];
+  onChange?: (size: string | null) => void;
+}) {
   const [active, setActive] = React.useState<string | null>(null);
 
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -12,11 +18,13 @@ export default function SizePicker({ sizes }: { sizes: string[] }) {
       e.preventDefault();
       const next = sizes[(idx + 1) % sizes.length];
       setActive(next);
+      onChange?.(next);
     }
     if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
       const prev = sizes[(idx - 1 + sizes.length) % sizes.length];
       setActive(prev);
+      onChange?.(prev);
     }
   };
 
@@ -36,7 +44,10 @@ export default function SizePicker({ sizes }: { sizes: string[] }) {
             type="button"
             role="option"
             aria-selected={selected}
-            onClick={() => setActive(size)}
+            onClick={() => {
+              setActive(size);
+              onChange?.(size);
+            }}
             className={`rounded-md border px-3 py-2 text-button ${
               selected
                 ? "border-dark-900 bg-dark-900 text-light-100"

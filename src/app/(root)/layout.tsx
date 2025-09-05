@@ -8,6 +8,7 @@ export default function RootGroupLayout({
 }>) {
   return (
     <div className="antialiased">
+      {/* Hydration boundary ensures Navbar (client) sees latest cart store */}
       <Navbar />
       {children}
       <Footer />

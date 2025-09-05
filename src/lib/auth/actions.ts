@@ -1,12 +1,13 @@
 "use server";
 
-import {cookies, headers} from "next/headers";
+import { cookies, headers } from "next/headers";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { guest } from "@/lib/db/schema/index";
 import { and, eq, lt } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { mergeGuestCartIntoUserCart } from "@/lib/actions/cart";
 
 const COOKIE_OPTIONS = {
   httpOnly: true as const,
@@ -62,10 +63,10 @@ const signUpSchema = z.object({
 
 export async function signUp(formData: FormData) {
   const rawData = {
-    name: formData.get('name') as string,
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  }
+    name: formData.get("name") as string,
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+  };
 
   const data = signUpSchema.parse(rawData);
 
@@ -77,6 +78,7 @@ export async function signUp(formData: FormData) {
     },
   });
 
+  await mergeGuestCartIntoUserCart();
   await migrateGuestToUser();
   return { ok: true, userId: res.user?.id };
 }
@@ -88,9 +90,9 @@ const signInSchema = z.object({
 
 export async function signIn(formData: FormData) {
   const rawData = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  }
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+  };
 
   const data = signInSchema.parse(rawData);
 
@@ -101,6 +103,7 @@ export async function signIn(formData: FormData) {
     },
   });
 
+  await mergeGuestCartIntoUserCart();
   await migrateGuestToUser();
   return { ok: true, userId: res.user?.id };
 }
@@ -108,8 +111,8 @@ export async function signIn(formData: FormData) {
 export async function getCurrentUser() {
   try {
     const session = await auth.api.getSession({
-      headers: await headers()
-    })
+      headers: await headers(),
+    });
 
     return session?.user ?? null;
   } catch (e) {
@@ -124,8 +127,9 @@ export async function signOut() {
 }
 
 export async function mergeGuestCartWithUserCart() {
+  const res = await mergeGuestCartIntoUserCart();
   await migrateGuestToUser();
-  return { ok: true };
+  return { ok: true, merged: res.ok };
 }
 
 async function migrateGuestToUser() {

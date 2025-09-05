@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
+import { useCartStore } from "@/store/cart.store";
 
 type NavItem = { label: string; href?: string };
 
@@ -18,6 +20,12 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
+  const { items, fetch } = useCartStore();
+
+  useEffect(() => {
+    // ленивая инициализация корзины при первом рендере навбара
+    fetch().catch(() => void 0);
+  }, [fetch]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -81,13 +89,14 @@ export default function Navbar() {
             >
               Search
             </button>
-            <button
-              type="button"
-              className="text-[var(--text-body)] leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)] text-dark-900 hover:text-dark-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dark-900 rounded-sm"
+            <Link
+              href="/cart"
+              className="inline-flex items-center gap-2 leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)] text-dark-900 hover:text-dark-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dark-900 rounded-sm"
               aria-label="View cart"
             >
-              My Cart (2)
-            </button>
+              <ShoppingCart size={18} />
+              <span>My Cart ({items.length})</span>
+            </Link>
           </div>
 
           <button
@@ -142,13 +151,14 @@ export default function Navbar() {
             >
               Search
             </button>
-            <button
-              type="button"
+            <Link
+              href="/cart"
               aria-label="View cart"
-              className="text-dark-900 hover:text-dark-700 text-[var(--text-body)] leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)]"
+              className="inline-flex items-center gap-2 text-dark-900 hover:text-dark-700 leading-[var(--text-body--line-height)] font-[var(--text-body--font-weight)]"
             >
-              My Cart (2)
-            </button>
+              <ShoppingCart size={18} />
+              <span>My Cart ({items.length})</span>
+            </Link>
           </div>
         </div>
       </div>
