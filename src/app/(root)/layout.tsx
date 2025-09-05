@@ -7,10 +7,10 @@ export default function RootGroupLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="antialiased">
+    <div className="min-h-svh flex flex-col antialiased">
       {/* Hydration boundary ensures Navbar (client) sees latest cart store */}
       <Navbar />
-      {children}
+      <main className="flex-1">{children}</main>
       <Footer />
     </div>
   );
