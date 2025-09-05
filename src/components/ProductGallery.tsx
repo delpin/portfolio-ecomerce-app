@@ -9,7 +9,8 @@ type VariantImages = Record<string, string[]>;
 type Swatch = {
   id: string;
   label: string;
-  bgClass: string; // tailwind class for background color
+  bgClass?: string; // tailwind class for background color
+  hex?: string; // hex color to render background
 };
 
 export default function ProductGallery({
@@ -80,7 +81,10 @@ export default function ProductGallery({
                 aria-label={s.label}
                 aria-pressed={selected}
                 onClick={() => setSelectedVariantId(s.id)}
-                className={`relative h-9 w-9 rounded-full border border-light-300 focus:outline-none focus:ring-2 focus:ring-dark-900 ${s.bgClass}`}
+                className={`relative h-9 w-9 rounded-full border border-light-300 focus:outline-none focus:ring-2 focus:ring-dark-900 ${
+                  s.bgClass ?? ""
+                }`}
+                style={s.hex ? { backgroundColor: s.hex } : undefined}
               >
                 {selected ? (
                   <span className="absolute inset-0 grid place-items-center">

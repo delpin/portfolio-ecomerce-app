@@ -1,7 +1,20 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { and, asc, countDistinct, desc, eq, ilike, inArray, sql, between, gte, lte, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  countDistinct,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  sql,
+  between,
+  gte,
+  lte,
+  or,
+} from "drizzle-orm";
 import { products } from "@/lib/db/schema/products";
 import { productVariants } from "@/lib/db/schema/variants";
 import { productImages } from "@/lib/db/schema/images";
@@ -41,7 +54,9 @@ export type ProductListResult = {
   totalCount: number;
 };
 
-export async function getAllProducts(filters: ProductListFilters): Promise<ProductListResult> {
+export async function getAllProducts(
+  filters: ProductListFilters
+): Promise<ProductListResult> {
   const page = Math.max(1, Number(filters.page || 1));
   const limit = Math.min(60, Math.max(1, Number(filters.limit || 24)));
   const offset = (page - 1) * limit;
@@ -50,12 +65,27 @@ export async function getAllProducts(filters: ProductListFilters): Promise<Produ
   type AndArg = Parameters<typeof and>[0];
   const whereClauses: AndArg[] = [
     eq(products.isPublished, true),
-    filters.search ? or(ilike(products.name, `%${filters.search}%`), ilike(products.description, `%${filters.search}%`)) : undefined,
-    filters.brandIds && filters.brandIds.length ? inArray(products.brandId, filters.brandIds) : undefined,
-    filters.categoryIds && filters.categoryIds.length ? inArray(products.categoryId, filters.categoryIds) : undefined,
-    filters.genderIds && filters.genderIds.length ? inArray(genders.slug, filters.genderIds) : undefined,
-    filters.colorIds && filters.colorIds.length ? inArray(colors.slug, filters.colorIds) : undefined,
-    filters.sizeIds && filters.sizeIds.length ? inArray(sizes.slug, filters.sizeIds) : undefined,
+    filters.search
+      ? or(
+          ilike(products.name, `%${filters.search}%`),
+          ilike(products.description, `%${filters.search}%`)
+        )
+      : undefined,
+    filters.brandIds && filters.brandIds.length
+      ? inArray(products.brandId, filters.brandIds)
+      : undefined,
+    filters.categoryIds && filters.categoryIds.length
+      ? inArray(products.categoryId, filters.categoryIds)
+      : undefined,
+    filters.genderIds && filters.genderIds.length
+      ? inArray(genders.slug, filters.genderIds)
+      : undefined,
+    filters.colorIds && filters.colorIds.length
+      ? inArray(colors.slug, filters.colorIds)
+      : undefined,
+    filters.sizeIds && filters.sizeIds.length
+      ? inArray(sizes.slug, filters.sizeIds)
+      : undefined,
     typeof filters.priceMin === "number" && typeof filters.priceMax === "number"
       ? between(priceExpr, filters.priceMin, filters.priceMax)
       : typeof filters.priceMin === "number"
@@ -86,12 +116,23 @@ export async function getAllProducts(filters: ProductListFilters): Promise<Produ
   const sortBy = (filters.sortBy as SortBy) || "latest";
   const orderBy =
     sortBy === "price_asc"
-      ? [asc(sql`MIN(${priceExpr})`), desc(products.createdAt), asc(products.id)]
+      ? [
+          asc(sql`MIN(${priceExpr})`),
+          desc(products.createdAt),
+          asc(products.id),
+        ]
       : sortBy === "price_desc"
-      ? [desc(sql`MIN(${priceExpr})`), desc(products.createdAt), asc(products.id)]
+      ? [
+          desc(sql`MIN(${priceExpr})`),
+          desc(products.createdAt),
+          asc(products.id),
+        ]
       : [desc(products.createdAt), asc(products.id)];
 
-  const rows = await baseQuery.orderBy(...orderBy).limit(limit).offset(offset);
+  const rows = await baseQuery
+    .orderBy(...orderBy)
+    .limit(limit)
+    .offset(offset);
 
   const countQuery = await db
     .select({ count: sql<number>`COUNT(DISTINCT ${products.id})` })
@@ -144,6 +185,7 @@ export type ProductVariantDTO = {
   salePrice: string | null;
   colorId: string;
   colorName: string | null;
+  colorHex?: string | null;
   sizeId: string;
   sizeName: string | null;
   inStock: number;
@@ -164,11 +206,25 @@ export type ProductDetail = {
   categoryName: string | null;
   genderId: string;
   genderName: string | null;
+  /** минимальная цена среди вариантов (учитывая скидку) */
+  price: number | null;
+  /** сравнимая цена (обычная цена, если есть скидка) */
+  compareAtPrice: number | null;
   variants: ProductVariantDTO[];
-  images: { id: string; url: string; isPrimary: boolean; sortOrder: number; variantId: string | null }[];
+  images: {
+    id: string;
+    url: string;
+    isPrimary: boolean;
+    sortOrder: number;
+    variantId: string | null;
+  }[];
+  /** сгруппированные изображения по variantId; ключ "default" для общих изображений без variantId */
+  imagesByVariant: Record<string, string[]>;
 };
 
-export async function getProduct(productId: string): Promise<ProductDetail | null> {
+export async function getProduct(
+  productId: string
+): Promise<ProductDetail | null> {
   const rows = await db
     .select({
       id: products.id,
@@ -199,6 +255,7 @@ export async function getProduct(productId: string): Promise<ProductDetail | nul
       i_isPrimary: productImages.isPrimary,
       i_sortOrder: productImages.sortOrder,
       i_variantId: productImages.variantId,
+      v_colorHex: colors.hexCode,
     })
     .from(products)
     .leftJoin(brands, eq(brands.id, products.brandId))
@@ -216,7 +273,16 @@ export async function getProduct(productId: string): Promise<ProductDetail | nul
   const head = rows[0];
 
   const variantsMap = new Map<string, ProductVariantDTO>();
-  const imagesMap = new Map<string, { id: string; url: string; isPrimary: boolean; sortOrder: number; variantId: string | null }>();
+  const imagesMap = new Map<
+    string,
+    {
+      id: string;
+      url: string;
+      isPrimary: boolean;
+      sortOrder: number;
+      variantId: string | null;
+    }
+  >();
 
   for (const r of rows) {
     if (r.v_id && !variantsMap.has(r.v_id)) {
@@ -227,6 +293,7 @@ export async function getProduct(productId: string): Promise<ProductDetail | nul
         salePrice: r.v_salePrice ? String(r.v_salePrice) : null,
         colorId: r.v_colorId ?? "",
         colorName: r.v_colorName ?? null,
+        colorHex: r.v_colorHex ?? null,
         sizeId: r.v_sizeId ?? "",
         sizeName: r.v_sizeName ?? null,
         inStock: r.v_inStock ?? 0,
@@ -245,6 +312,41 @@ export async function getProduct(productId: string): Promise<ProductDetail | nul
     }
   }
 
+  // вычисление цены и compare-at
+  let minBasePrice: number | null = null;
+  let minSalePrice: number | null = null;
+  for (const v of variantsMap.values()) {
+    const base = Number(v.price);
+    const sale = v.salePrice != null ? Number(v.salePrice) : null;
+    if (minBasePrice == null || base < minBasePrice) minBasePrice = base;
+    if (sale != null && (minSalePrice == null || sale < minSalePrice))
+      minSalePrice = sale;
+  }
+
+  const sortedImages = Array.from(imagesMap.values()).sort((a, b) =>
+    a.isPrimary === b.isPrimary
+      ? a.sortOrder - b.sortOrder
+      : a.isPrimary
+      ? -1
+      : 1
+  );
+
+  // группировка изображений по цветам (для корректной работы свотчей)
+  const imagesByVariant: Record<string, string[]> = {};
+  const colorImagesSet: Record<string, Set<string>> = {};
+  for (const img of sortedImages) {
+    let key = "default";
+    if (img.variantId) {
+      const v = variantsMap.get(img.variantId);
+      if (v?.colorId) key = v.colorId;
+    }
+    colorImagesSet[key] ||= new Set<string>();
+    if (img.url) colorImagesSet[key].add(img.url);
+  }
+  for (const [k, set] of Object.entries(colorImagesSet)) {
+    imagesByVariant[k] = Array.from(set);
+  }
+
   return {
     id: head.id,
     name: head.name,
@@ -258,7 +360,157 @@ export async function getProduct(productId: string): Promise<ProductDetail | nul
     categoryName: head.categoryName ?? null,
     genderId: head.genderId,
     genderName: head.genderName ?? null,
+    price: minSalePrice ?? minBasePrice ?? null,
+    compareAtPrice: minSalePrice != null ? minBasePrice : null,
     variants: Array.from(variantsMap.values()),
-    images: Array.from(imagesMap.values()).sort((a, b) => (a.isPrimary === b.isPrimary ? a.sortOrder - b.sortOrder : a.isPrimary ? -1 : 1)),
+    images: sortedImages,
+    imagesByVariant,
   };
+}
+
+export type ReviewDTO = {
+  id: string;
+  author: string;
+  rating: number;
+  title?: string;
+  content: string;
+  createdAt: string;
+};
+
+export type RecommendedProductDTO = {
+  id: string;
+  title: string;
+  price: number | null;
+  imageSrc: string;
+};
+
+export async function getProductReviews(
+  productId: string
+): Promise<ReviewDTO[]> {
+  // Поскольку статус модерации в схеме отсутствует, возвращаем все отзывы продукта
+  const { reviews } = await import("@/lib/db/schema/reviews");
+  const { user } = await import("@/lib/db/schema/user");
+
+  const rows = await db
+    .select({
+      id: reviews.id,
+      rating: reviews.rating,
+      comment: reviews.comment,
+      createdAt: reviews.createdAt,
+      authorName: user.name,
+    })
+    .from(reviews)
+    .leftJoin(user, eq(user.id, reviews.userId))
+    .where(eq(reviews.productId, productId))
+    .orderBy(desc(reviews.createdAt))
+    .limit(10);
+
+  if (!rows.length) {
+    // Fallback-дамми, если данных нет
+    const now = new Date();
+    return [
+      {
+        id: "dummy-1",
+        author: "Anonymous",
+        rating: 5,
+        title: "Отлично",
+        content: "Качество превзошло ожидания. Сидят идеально.",
+        createdAt: now.toISOString(),
+      },
+      {
+        id: "dummy-2",
+        author: "Anonymous",
+        rating: 4,
+        title: "Хорошая покупка",
+        content: "Удобные, стильные. Немного маломерят.",
+        createdAt: new Date(now.getTime() - 86400000).toISOString(),
+      },
+    ];
+  }
+
+  return rows.map((r) => ({
+    id: r.id,
+    author: r.authorName ?? "Anonymous",
+    rating: r.rating,
+    title: undefined,
+    content: r.comment ?? "",
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
+export async function getRecommendedProducts(
+  productId: string,
+  limit = 6
+): Promise<RecommendedProductDTO[]> {
+  // получаем атрибуты исходного продукта
+  const base = await db
+    .select({
+      id: products.id,
+      categoryId: products.categoryId,
+      brandId: products.brandId,
+      genderId: products.genderId,
+    })
+    .from(products)
+    .where(eq(products.id, productId));
+  const head = base[0];
+  if (!head) return [];
+
+  const priceExpr = sql<number>`MIN(COALESCE(${productVariants.salePrice}, ${productVariants.price}))`;
+
+  const candidateRows = await db
+    .select({
+      id: products.id,
+      title: products.name,
+      minPrice: priceExpr,
+    })
+    .from(products)
+    .leftJoin(productVariants, eq(productVariants.productId, products.id))
+    .where(
+      and(
+        eq(products.isPublished, true),
+        eq(products.categoryId, head.categoryId),
+        eq(products.brandId, head.brandId),
+        eq(products.genderId, head.genderId),
+        sql`${products.id} <> ${productId}`
+      )
+    )
+    .groupBy(products.id, products.name)
+    .orderBy(desc(products.createdAt))
+    .limit(limit * 2); // запас, чтобы отфильтровать без изображений
+
+  if (!candidateRows.length) return [];
+
+  const ids = candidateRows.map((r) => r.id);
+  const images = await db
+    .select({
+      productId: productImages.productId,
+      url: productImages.url,
+      isPrimary: productImages.isPrimary,
+      sortOrder: productImages.sortOrder,
+    })
+    .from(productImages)
+    .where(inArray(productImages.productId, ids))
+    .orderBy(desc(productImages.isPrimary), asc(productImages.sortOrder));
+
+  const firstImageByProduct = new Map<string, string>();
+  for (const img of images) {
+    if (img.url && !firstImageByProduct.has(img.productId)) {
+      firstImageByProduct.set(img.productId, img.url);
+    }
+  }
+
+  const result: RecommendedProductDTO[] = [];
+  for (const row of candidateRows) {
+    const imageSrc = firstImageByProduct.get(row.id);
+    if (!imageSrc) continue; // пропускаем товары без валидного изображения
+    result.push({
+      id: row.id,
+      title: row.title,
+      price: row.minPrice != null ? Number(row.minPrice) : null,
+      imageSrc,
+    });
+    if (result.length >= limit) break;
+  }
+
+  return result;
 }
