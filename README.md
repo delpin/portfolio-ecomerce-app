@@ -11,6 +11,7 @@ A modern e-commerce application built with Next.js, TypeScript, TailwindCSS, Bet
 - 🎨 Beautiful UI with TailwindCSS
 - 📱 Responsive design
 - ⚡ State management with Zustand
+- test!
 
 ## Tech Stack
 
